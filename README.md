@@ -208,3 +208,23 @@ The material results are the same, but there might be small deviations in detail
 
 Contributions to Orchid are welcome.  
 If you find any issues or have suggestions for improvements, please open an issue or submit a pull request in the GitHub repository: https://github.com/aidos-lab/orchid
+
+
+
+## How I ran on my mac:
+
+Installed a python venv. Installed julia. Installed a bunh of packages via the command line:
+eg:
+
+```
+julia -e 'import Pkg; Pkg.add("CodecZlib")'  
+```
+
+Then run
+```
+bash reproduce_toy.sh 
+```
+from the command line.
+
+
+
