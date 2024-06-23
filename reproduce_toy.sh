@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-echo "Setting exit on error"
 set -e
 
 dispersions=("UnweightedClique" "UnweightedStar" "WeightedClique")
