@@ -9,11 +9,25 @@ using ArgParse
 using CodecZlib: GzipCompressor, GzipDecompressorStream
 
 parse_edgelist(fp) = [parse.(Int, split(r)) for r in readlines(fp) for s in split(r) if s != ""]
+
+"""
+The Julia function parse_edgelist_collection(fp) reads an
+edge list from a file fp (file path) and parses it into two separate collections: 
+a vector of hypergraph labels y and a vector of vectors representing hyperedges rc. 
+Eg (in the ih format: individual)
+1 2
+2 3 4
+means we have one hypergraph with two hyper-edges: {1,2} and {2,3,4}. 
+"""
 function parse_edgelist_collection(fp)
+    # Initialize variable
     rc, y = Vector{Int}[], Int[]
+    # readlines(fp) reads all lines from the file specified by fp
     for r in readlines(fp)
         t = parse.(Int, split(r))
+        # t[1] is the first element of the vector t, which is pushed onto the vector y.
         push!(y, t[1])
+        # t[e:end] is the rest of the vector t, which is pushed onto the vector rc
         push!(rc, t[2:end])
     end
     y, rc
@@ -40,38 +54,59 @@ end
 function run(input, dispersion, aggregation, alpha)
     !(0 <= alpha <= 1) && throw("!(0 <= alpha <= 1)")
 
+    # The measure. This is just picking wich measure we use.
     D = Dict{String,Type}(
         lowercase("UnweightedClique") => Orchid.DisperseUnweightedClique,
         lowercase("WeightedClique")   => Orchid.DisperseWeightedClique,
         lowercase("UnweightedStar")   => Orchid.DisperseUnweightedStar
     )[lowercase(dispersion)]
+    # The aggregation function. This is literally picking the agregation function
     A = Dict{String,Any}(
         "mean" => Orchid.AggregateMean,
         "max"  => Orchid.AggregateMax,
         "all"  => (Orchid.AggregateMean, Orchid.AggregateMax)
     )[lowercase(aggregation)]
 
+    # @info "A is $A"
+
+    # @info "D is $D"
+
     guess_cost_calc(E) = length(E) > 10_000 || maximum(e -> maximum(e; init=0), E) > 10_000 ? Orchid.CostOndemand : Orchid.CostMatrix
     open_() = endswith(input, ".gz") ? GzipDecompressorStream(open(input)) : open(input)
 
-    if occursin(".chg.tsv", input)
+    if occursin(".chg.tsv", input) # collection of hypergraphs
         @info "Reading Hypergraphs"
         y, rc = parse_edgelist_collection(open_())
-        ys = unique(y)
-        Tot = length(ys)
+        # y is the hypergraph number this edge belongs to
+        # rc is a list of list. Each element is an hyperedge, with the the vertex in that hyperedge
+        # @info "y is $y"
+        # @info "rc is $rc"
+        ys = unique(y) # these are the labels of the hypegraphs. eg if we have two and they are 
+        # labelled 2 and 0, this would be [2,0]
+        # @info "the ys are $ys"
+        Tot = length(ys) # this is the total number of hypergraphs in the file 
+        # @info "Tot is $Tot"
         results = []
+        # loop through the hypergraphs (the ys)
         foreach(ys) do Y
             @info "Importing Hypergraph $Y/$Tot"
-            E = rc[y.==Y]
+            @info "Y is $Y" # this is the hypergraph number
+            # so here they filter for the hyperedges in hypergraph number Y
+            E = rc[y.==Y] # set of hyper-edges 
             r = Orchid.hypergraph_curvatures(D, A, E, alpha, guess_cost_calc(E))
             for a in r.aggregations
                 push!(results, get_entry(r, a, input, dispersion, alpha))
             end
         end
         results
-    else
+    else # individual hypergraph
         @info "Importing Hypergraph"
         E = parse_edgelist(open_())
+        # @info "A is $A"
+        # A is the agrregation function (Eg aggregate mean, aggregate max)
+        # @info "D is $D"
+        # I think D is the measure
+        @info "E is $E" #
         r = Orchid.hypergraph_curvatures(D, A, E, alpha, guess_cost_calc(E))
         map(r.aggregations) do a
             get_entry(r, a, input, dispersion, alpha)
@@ -99,6 +134,8 @@ end
 function main()
     s = ArgParseSettings(description="""
         This is a command line interface for the ORCHID hypergraph curvature framework described in 
+
+        Calls orchid_main
         
         Coupette, C., Dalleiger, S. and Rieck, B., 
         Ollivier-Ricci Curvature for Hypergraphs: A Unified Framework, 
