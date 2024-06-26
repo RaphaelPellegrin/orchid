@@ -118,6 +118,9 @@ end
 abstract type AggregateMean end
 abstract type AggregateMax end
 
+"""
+This is the function for AGG_A. Aggregates the Wasserstein distances
+"""
 function aggregate(::Type{AggregateMean}, S::Vector, W)
     s, n = 0.0, length(S)
     (n <= 1) && return 0.0
@@ -127,6 +130,12 @@ function aggregate(::Type{AggregateMean}, S::Vector, W)
     s * 2 / (n * (n - 1))
 end
 
+"""
+This is the function for AGG_M. Aggregates the Wasserstein distances
+
+# Arguments:
+- i 
+"""
 function aggregate(::Type{AggregateMax}, S::Vector, W)
     s, n = 0.0, length(S)
     (n <= 1) && return 0.0
@@ -136,8 +145,18 @@ function aggregate(::Type{AggregateMax}, S::Vector, W)
     s
 end
 
+"""
+This is the function for computing the curvature of a node by summing over it's neighbors
+
+# Arguments:
+- i the node
+- W the Wasserstein distances between all pairs of node
+- neighbors
+"""
 function node_curvature_neighborhood(i::Int, W, neighbors)
-    N = neighbors[i]
+    @info "The node is $i"
+    N = neighbors[i] # the neighbors of node i
+    @info "The node neighbors are $N"
     if length(N) <= 1
         1.0
     else
@@ -147,7 +166,12 @@ function node_curvature_neighborhood(i::Int, W, neighbors)
     end
 end
 
+"""
+This is the function for computing the curvature of a node by summing over it's edge curvatures
+"""
 function node_curvature_edges(node, dist, rc)
+    @info "The node is $node"
+    @info "rc is $rc"
     degree = length(rc[node])
     if degree == 0
         1.0
@@ -231,7 +255,7 @@ end
 - `cost`: Cost computation method (options: CostOndemand, CostMatrix)
 """
 function hypergraph_curvatures(dispersion::Type, aggregation::A, incidence::AbstractSparseMatrix, alpha::Float64, cost::Type) where {A}
-    @info "Preparing Input"
+    @info "Preparing Input to compute curvatures"
     n, m = size(incidence)
     I, J, _ = findnz(incidence)
     rc, cr = edgelist_format(J, I, m), edgelist_format(I, J, n)
@@ -240,7 +264,7 @@ function hypergraph_curvatures(dispersion::Type, aggregation::A, incidence::Abst
 end
 
 function hypergraph_curvatures(dispersion::Type, aggregation::A, incidence::Vector{B}, alpha::Float64, cost::Type) where {A,B}
-    @info "Preparing Input"
+    @info "Preparing Input to compute curvatures"
     rc, cr = transpose_edgelist(incidence), incidence
     aggregation = hasmethod(length, Tuple{A}) ? aggregation : [aggregation]
     hypergraph_curvatures(dispersion, aggregation, rc, cr, alpha, cost)
